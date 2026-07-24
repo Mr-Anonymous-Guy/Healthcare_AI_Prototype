@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     const timeline: TimelineItem[] = [];
 
     // Format vitals
-    vitals.forEach((v) => {
+    vitals.forEach((v: any) => {
       const parts: string[] = [];
       if (v.heartRate) parts.push(`HR: ${v.heartRate} bpm`);
       if (v.bloodPressureSystolic && v.bloodPressureDiastolic)
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     });
 
     // Format symptoms
-    symptoms.forEach((s) => {
+    symptoms.forEach((s: any) => {
       timeline.push({
         id: `symptom-${s.id}`,
         type: 'SYMPTOM',
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     });
 
     // Format medical reports
-    reports.forEach((r) => {
+    reports.forEach((r: any) => {
       timeline.push({
         id: `report-${r.id}`,
         type: 'REPORT',
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     });
 
     // Format health logs
-    logs.forEach((l) => {
+    logs.forEach((l: any) => {
       timeline.push({
         id: `log-${l.id}`,
         type: 'LOG',

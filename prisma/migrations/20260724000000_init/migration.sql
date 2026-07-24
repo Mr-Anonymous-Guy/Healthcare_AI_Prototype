@@ -1,19 +1,31 @@
 -- Initial Migration SQL for HealthAI Prototype
--- Generated for review: DO NOT RUN AUTOMATICALLY AGAINST PRODUCTION
+-- Safe & Idempotent Migration: Checks existence before creating types, tables, or indexes.
 
 -- CreateExtension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
 
--- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('PATIENT', 'ADMIN', 'DOCTOR');
-CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'PROCESSED', 'FAILED');
-CREATE TYPE "AppointmentStatus" AS ENUM ('SCHEDULED', 'COMPLETED', 'CANCELLED');
-CREATE TYPE "MessageRole" AS ENUM ('USER', 'ASSISTANT', 'SYSTEM');
-CREATE TYPE "NotificationType" AS ENUM ('INFO', 'APPOINTMENT_REMINDER', 'VITALS_ALERT', 'SYSTEM');
+-- CreateEnum Safely
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'UserRole') THEN
+        CREATE TYPE "UserRole" AS ENUM ('PATIENT', 'ADMIN', 'DOCTOR');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ReportStatus') THEN
+        CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'PROCESSED', 'FAILED');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'AppointmentStatus') THEN
+        CREATE TYPE "AppointmentStatus" AS ENUM ('SCHEDULED', 'COMPLETED', 'CANCELLED');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'MessageRole') THEN
+        CREATE TYPE "MessageRole" AS ENUM ('USER', 'ASSISTANT', 'SYSTEM');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationType') THEN
+        CREATE TYPE "NotificationType" AS ENUM ('INFO', 'APPOINTMENT_REMINDER', 'VITALS_ALERT', 'SYSTEM');
+    END IF;
+END $$;
 
 -- CreateTable users
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "email" TEXT NOT NULL,
     "role" "UserRole" NOT NULL DEFAULT 'PATIENT',
@@ -24,7 +36,7 @@ CREATE TABLE "users" (
 );
 
 -- CreateTable profiles
-CREATE TABLE "profiles" (
+CREATE TABLE IF NOT EXISTS "profiles" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "full_name" TEXT,
@@ -42,7 +54,7 @@ CREATE TABLE "profiles" (
 );
 
 -- CreateTable medical_reports
-CREATE TABLE "medical_reports" (
+CREATE TABLE IF NOT EXISTS "medical_reports" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "file_id" UUID,
@@ -59,7 +71,7 @@ CREATE TABLE "medical_reports" (
 );
 
 -- CreateTable files
-CREATE TABLE "files" (
+CREATE TABLE IF NOT EXISTS "files" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "file_name" TEXT NOT NULL,
@@ -76,7 +88,7 @@ CREATE TABLE "files" (
 );
 
 -- CreateTable appointments
-CREATE TABLE "appointments" (
+CREATE TABLE IF NOT EXISTS "appointments" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "doctor_name" TEXT NOT NULL,
@@ -92,7 +104,7 @@ CREATE TABLE "appointments" (
 );
 
 -- CreateTable symptoms
-CREATE TABLE "symptoms" (
+CREATE TABLE IF NOT EXISTS "symptoms" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "symptom_name" TEXT NOT NULL,
@@ -107,7 +119,7 @@ CREATE TABLE "symptoms" (
 );
 
 -- CreateTable vitals
-CREATE TABLE "vitals" (
+CREATE TABLE IF NOT EXISTS "vitals" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "heart_rate" INTEGER,
@@ -124,7 +136,7 @@ CREATE TABLE "vitals" (
 );
 
 -- CreateTable health_logs
-CREATE TABLE "health_logs" (
+CREATE TABLE IF NOT EXISTS "health_logs" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "log_type" TEXT NOT NULL,
@@ -138,7 +150,7 @@ CREATE TABLE "health_logs" (
 );
 
 -- CreateTable ai_sessions
-CREATE TABLE "ai_sessions" (
+CREATE TABLE IF NOT EXISTS "ai_sessions" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "model" TEXT NOT NULL DEFAULT 'gpt-4o-mini',
@@ -151,7 +163,7 @@ CREATE TABLE "ai_sessions" (
 );
 
 -- CreateTable conversations
-CREATE TABLE "conversations" (
+CREATE TABLE IF NOT EXISTS "conversations" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "ai_session_id" UUID,
@@ -163,7 +175,7 @@ CREATE TABLE "conversations" (
 );
 
 -- CreateTable messages
-CREATE TABLE "messages" (
+CREATE TABLE IF NOT EXISTS "messages" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "conversation_id" UUID NOT NULL,
     "role" "MessageRole" NOT NULL,
@@ -176,7 +188,7 @@ CREATE TABLE "messages" (
 );
 
 -- CreateTable notifications
-CREATE TABLE "notifications" (
+CREATE TABLE IF NOT EXISTS "notifications" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "title" TEXT NOT NULL,
@@ -191,7 +203,7 @@ CREATE TABLE "notifications" (
 );
 
 -- CreateTable audit_logs
-CREATE TABLE "audit_logs" (
+CREATE TABLE IF NOT EXISTS "audit_logs" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "actor_id" UUID,
     "action" TEXT NOT NULL,
@@ -204,98 +216,102 @@ CREATE TABLE "audit_logs" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "profiles_user_id_key" ON "profiles"("user_id");
-CREATE INDEX "profiles_user_id_idx" ON "profiles"("user_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "profiles_user_id_key" ON "profiles"("user_id");
+CREATE INDEX IF NOT EXISTS "profiles_user_id_idx" ON "profiles"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "medical_reports_file_id_key" ON "medical_reports"("file_id");
-CREATE INDEX "medical_reports_user_id_idx" ON "medical_reports"("user_id");
-CREATE INDEX "medical_reports_report_date_idx" ON "medical_reports"("report_date");
-CREATE INDEX "medical_reports_status_idx" ON "medical_reports"("status");
+CREATE UNIQUE INDEX IF NOT EXISTS "medical_reports_file_id_key" ON "medical_reports"("file_id");
+CREATE INDEX IF NOT EXISTS "medical_reports_user_id_idx" ON "medical_reports"("user_id");
+CREATE INDEX IF NOT EXISTS "medical_reports_report_date_idx" ON "medical_reports"("report_date");
+CREATE INDEX IF NOT EXISTS "medical_reports_status_idx" ON "medical_reports"("status");
 
 -- CreateIndex
-CREATE INDEX "files_user_id_idx" ON "files"("user_id");
+CREATE INDEX IF NOT EXISTS "files_user_id_idx" ON "files"("user_id");
 
 -- CreateIndex
-CREATE INDEX "appointments_user_id_idx" ON "appointments"("user_id");
-CREATE INDEX "appointments_appointment_date_idx" ON "appointments"("appointment_date");
-CREATE INDEX "appointments_status_idx" ON "appointments"("status");
+CREATE INDEX IF NOT EXISTS "appointments_user_id_idx" ON "appointments"("user_id");
+CREATE INDEX IF NOT EXISTS "appointments_appointment_date_idx" ON "appointments"("appointment_date");
+CREATE INDEX IF NOT EXISTS "appointments_status_idx" ON "appointments"("status");
 
 -- CreateIndex
-CREATE INDEX "symptoms_user_id_idx" ON "symptoms"("user_id");
-CREATE INDEX "symptoms_logged_at_idx" ON "symptoms"("logged_at");
+CREATE INDEX IF NOT EXISTS "symptoms_user_id_idx" ON "symptoms"("user_id");
+CREATE INDEX IF NOT EXISTS "symptoms_logged_at_idx" ON "symptoms"("logged_at");
 
 -- CreateIndex
-CREATE INDEX "vitals_user_id_idx" ON "vitals"("user_id");
-CREATE INDEX "vitals_recorded_at_idx" ON "vitals"("recorded_at");
+CREATE INDEX IF NOT EXISTS "vitals_user_id_idx" ON "vitals"("user_id");
+CREATE INDEX IF NOT EXISTS "vitals_recorded_at_idx" ON "vitals"("recorded_at");
 
 -- CreateIndex
-CREATE INDEX "health_logs_user_id_idx" ON "health_logs"("user_id");
-CREATE INDEX "health_logs_logged_at_idx" ON "health_logs"("logged_at");
-CREATE INDEX "health_logs_log_type_idx" ON "health_logs"("log_type");
+CREATE INDEX IF NOT EXISTS "health_logs_user_id_idx" ON "health_logs"("user_id");
+CREATE INDEX IF NOT EXISTS "health_logs_logged_at_idx" ON "health_logs"("logged_at");
+CREATE INDEX IF NOT EXISTS "health_logs_log_type_idx" ON "health_logs"("log_type");
 
 -- CreateIndex
-CREATE INDEX "ai_sessions_user_id_idx" ON "ai_sessions"("user_id");
+CREATE INDEX IF NOT EXISTS "ai_sessions_user_id_idx" ON "ai_sessions"("user_id");
 
 -- CreateIndex
-CREATE INDEX "conversations_user_id_idx" ON "conversations"("user_id");
-CREATE INDEX "conversations_ai_session_id_idx" ON "conversations"("ai_session_id");
+CREATE INDEX IF NOT EXISTS "conversations_user_id_idx" ON "conversations"("user_id");
+CREATE INDEX IF NOT EXISTS "conversations_ai_session_id_idx" ON "conversations"("ai_session_id");
 
 -- CreateIndex
-CREATE INDEX "messages_conversation_id_idx" ON "messages"("conversation_id");
-CREATE INDEX "messages_created_at_idx" ON "messages"("created_at");
+CREATE INDEX IF NOT EXISTS "messages_conversation_id_idx" ON "messages"("conversation_id");
+CREATE INDEX IF NOT EXISTS "messages_created_at_idx" ON "messages"("created_at");
 
 -- CreateIndex
-CREATE INDEX "notifications_user_id_idx" ON "notifications"("user_id");
-CREATE INDEX "notifications_is_read_idx" ON "notifications"("is_read");
-CREATE INDEX "notifications_scheduled_for_idx" ON "notifications"("scheduled_for");
+CREATE INDEX IF NOT EXISTS "notifications_user_id_idx" ON "notifications"("user_id");
+CREATE INDEX IF NOT EXISTS "notifications_is_read_idx" ON "notifications"("is_read");
+CREATE INDEX IF NOT EXISTS "notifications_scheduled_for_idx" ON "notifications"("scheduled_for");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_actor_id_idx" ON "audit_logs"("actor_id");
-CREATE INDEX "audit_logs_action_idx" ON "audit_logs"("action");
-CREATE INDEX "audit_logs_created_at_idx" ON "audit_logs"("created_at");
+CREATE INDEX IF NOT EXISTS "audit_logs_actor_id_idx" ON "audit_logs"("actor_id");
+CREATE INDEX IF NOT EXISTS "audit_logs_action_idx" ON "audit_logs"("action");
+CREATE INDEX IF NOT EXISTS "audit_logs_created_at_idx" ON "audit_logs"("created_at");
 
--- AddForeignKey
-ALTER TABLE "profiles" ADD CONSTRAINT "profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "medical_reports" ADD CONSTRAINT "medical_reports_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "medical_reports" ADD CONSTRAINT "medical_reports_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "files"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "files" ADD CONSTRAINT "files_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "symptoms" ADD CONSTRAINT "symptoms_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "vitals" ADD CONSTRAINT "vitals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "health_logs" ADD CONSTRAINT "health_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ai_sessions" ADD CONSTRAINT "ai_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_ai_session_id_fkey" FOREIGN KEY ("ai_session_id") REFERENCES "ai_sessions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKeys Safely
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_user_id_fkey') THEN
+        ALTER TABLE "profiles" ADD CONSTRAINT "profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'medical_reports_user_id_fkey') THEN
+        ALTER TABLE "medical_reports" ADD CONSTRAINT "medical_reports_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'medical_reports_file_id_fkey') THEN
+        ALTER TABLE "medical_reports" ADD CONSTRAINT "medical_reports_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "files"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'files_user_id_fkey') THEN
+        ALTER TABLE "files" ADD CONSTRAINT "files_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'appointments_user_id_fkey') THEN
+        ALTER TABLE "appointments" ADD CONSTRAINT "appointments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'symptoms_user_id_fkey') THEN
+        ALTER TABLE "symptoms" ADD CONSTRAINT "symptoms_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vitals_user_id_fkey') THEN
+        ALTER TABLE "vitals" ADD CONSTRAINT "vitals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'health_logs_user_id_fkey') THEN
+        ALTER TABLE "health_logs" ADD CONSTRAINT "health_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_sessions_user_id_fkey') THEN
+        ALTER TABLE "ai_sessions" ADD CONSTRAINT "ai_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conversations_user_id_fkey') THEN
+        ALTER TABLE "conversations" ADD CONSTRAINT "conversations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conversations_ai_session_id_fkey') THEN
+        ALTER TABLE "conversations" ADD CONSTRAINT "conversations_ai_session_id_fkey" FOREIGN KEY ("ai_session_id") REFERENCES "ai_sessions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'messages_conversation_id_fkey') THEN
+        ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notifications_user_id_fkey') THEN
+        ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_actor_id_fkey') THEN
+        ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
