@@ -56,41 +56,48 @@
 ### Installation
 
 1. **Clone the repository**:
+
    ```bash
-   git clone https://github.com/your-username/Healthcare_AI_Prototype.git
+   git clone https://github.com/Mr-Anonymous-Guy/Healthcare_AI_Prototype.git
    cd Healthcare_AI_Prototype
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Configure Environment Variables**:
    Copy `.env.example` to `.env` and fill in your keys:
+
    ```bash
    cp .env.example .env
    ```
+
    *Required variables*:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `DATABASE_URL` (Supabase Connection Pooler)
-   - `DIRECT_URL` (Supabase Direct Connection)
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `OPENAI_API_KEY` (or OpenRouter fallback)
-   - `RESEND_API_KEY`
-   - `SITE_URL`
+   * `NEXT_PUBLIC_SUPABASE_URL`
+   * `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   * `DATABASE_URL` (Supabase Connection Pooler)
+   * `DIRECT_URL` (Supabase Direct Connection)
+   * `SUPABASE_SERVICE_ROLE_KEY`
+   * `OPENAI_API_KEY` (or OpenRouter fallback)
+   * `RESEND_API_KEY`
+   * `SITE_URL`
 
 4. **Initialize Prisma Database Schema**:
+
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
 5. **Run the Development Server**:
+
    ```bash
    npm run dev
    ```
+
    Open [http://localhost:8080](http://localhost:8080) in your browser.
 
 ---
@@ -98,6 +105,7 @@
 ## ✨ Core Feature Overview
 
 ### 👤 Patient Portal
+
 * **Auth & Profiles**: Supabase Auth integration, session management, and profile customization.
 * **Health Dashboard**: Dynamic dashboard shell with health score indicators, upcoming appointments, and quick action widgets.
 * **Medical Reports & PDF Pipeline**: Upload medical PDFs/images, extract structured text via `pdfjs`, and generate vector embeddings.
@@ -107,6 +115,7 @@
 * **Unified Health Timeline**: Chronological activity feed consolidating medical files, vitals entries, and doctor visits.
 
 ### 🛡️ Admin Operations Console (`/admin`)
+
 * **System Overview**: Live aggregate metric cards monitoring users, reports, appointments, vitals logs, and AI sessions.
 * **User Directory**: Central user management and per-patient detailed activity logs.
 * **Medical Files Monitor**: System-wide PDF storage audit with text preview modals and administrative deletion actions.
