@@ -1,9 +1,4 @@
--- ============================================================
 -- HealthAI Prototype — Migration: Add role column to profiles
--- ============================================================
--- Review carefully before executing in Supabase SQL Editor.
--- DO NOT AUTO-RUN.
--- ============================================================
 
 -- 1. Ensure UserRole enum type exists if not already present
 DO $$
