@@ -1,0 +1,292 @@
+// Prisma schema file for HealthAI Prototype
+// Database: Supabase Postgres + pgvector extension
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+enum UserRole {
+  PATIENT
+  ADMIN
+  DOCTOR
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum NotificationType {
+  INFO
+  APPOINTMENT_REMINDER
+  VITALS_ALERT
+  SYSTEM
+}
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  role      UserRole @default(PATIENT)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile        Profile?
+  medicalReports MedicalReport[]
+  appointments   Appointment[]
+  symptoms       Symptom[]
+  vitals         Vital[]
+  healthLogs     HealthLog[]
+  conversations  Conversation[]
+  notifications  Notification[]
+  files          File[]
+  aiSessions     AISession[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+model Profile {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String    @unique @map("user_id") @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName         String?   @map("full_name")
+  phone            String?
+  dateOfBirth      DateTime? @map("date_of_birth")
+  gender           String?
+  bloodType        String?   @map("blood_type")
+  emergencyContact String?   @map("emergency_contact")
+  medicalHistory   String?   @map("medical_history") @db.Text
+  allergies        String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("profiles")
+}
+
+model MedicalReport {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileId        String?      @unique @map("file_id") @db.Uuid
+  file          File?        @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  title         String
+  reportType    String?      @map("report_type")
+  reportDate    DateTime?    @map("report_date")
+  summary       String?      @db.Text
+  extractedText String?      @map("extracted_text") @db.Text
+  status        ReportStatus @default(PENDING)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([reportDate])
+  @@index([status])
+  @@map("medical_reports")
+}
+
+model File {
+  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String                 @map("user_id") @db.Uuid
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName      String                 @map("file_name")
+  fileKey       String                 @map("file_key")
+  fileUrl       String                 @map("file_url")
+  fileSize      Int                    @map("file_size")
+  mimeType      String                 @map("mime_type")
+  extractedText String?                @map("extracted_text") @db.Text
+  embedding     Unsupported("vector")?
+  medicalReport MedicalReport?
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("files")
+}
+
+model RecordEmbedding {
+  id         String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String                      @map("user_id") @db.Uuid
+  fileId     String                      @map("file_id") @db.Uuid
+  chunkIndex Int                         @map("chunk_index")
+  chunkText  String                      @map("chunk_text") @db.Text
+  embedding  Unsupported("vector(1536)")
+  createdAt  DateTime                    @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([fileId])
+  @@map("record_embeddings")
+}
+
+model Appointment {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorName      String            @map("doctor_name")
+  department      String?
+  appointmentDate DateTime          @map("appointment_date")
+  status          AppointmentStatus @default(SCHEDULED)
+  notes           String?           @db.Text
+  reminderSent    Boolean           @default(false) @map("reminder_sent")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@map("appointments")
+}
+
+model Symptom {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptomName String   @map("symptom_name")
+  severity    Int
+  duration    String?
+  notes       String?  @db.Text
+  loggedAt    DateTime @default(now()) @map("logged_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([loggedAt])
+  @@map("symptoms")
+}
+
+model Vital {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String   @map("user_id") @db.Uuid
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  heartRate              Int?     @map("heart_rate")
+  bloodPressureSystolic  Int?     @map("bp_systolic")
+  bloodPressureDiastolic Int?     @map("bp_diastolic")
+  temperature            Float?
+  glucose                Float?
+  spO2                   Float?
+  recordedAt             DateTime @default(now()) @map("recorded_at")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([recordedAt])
+  @@map("vitals")
+}
+
+model HealthLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logType   String   @map("log_type")
+  title     String
+  content   String   @db.Text
+  loggedAt  DateTime @default(now()) @map("logged_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([loggedAt])
+  @@index([logType])
+  @@map("health_logs")
+}
+
+model AISession {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  model         String         @default("gpt-4o-mini")
+  systemPrompt  String?        @map("system_prompt") @db.Text
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  conversations Conversation[]
+
+  @@index([userId])
+  @@map("ai_sessions")
+}
+
+model Conversation {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiSessionId String?    @map("ai_session_id") @db.Uuid
+  aiSession   AISession? @relation(fields: [aiSessionId], references: [id], onDelete: SetNull)
+  title       String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  messages    Message[]
+
+  @@index([userId])
+  @@index([aiSessionId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String                 @map("conversation_id") @db.Uuid
+  conversation   Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String                 @db.Text
+  embedding      Unsupported("vector")?
+  sources        Json?
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model Notification {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  message      String           @db.Text
+  type         NotificationType @default(INFO)
+  isRead       Boolean          @default(false) @map("is_read")
+  scheduledFor DateTime?        @map("scheduled_for")
+  sentAt       DateTime?        @map("sent_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId   String?  @map("actor_id") @db.Uuid
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  resource  String
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
