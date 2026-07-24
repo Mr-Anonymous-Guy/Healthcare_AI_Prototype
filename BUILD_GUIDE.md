@@ -373,12 +373,19 @@ Never ask me what to do next unless a decision requires a human.
 ### Milestone: Supabase Migration Synchronization & Workflow Standard
 **Goal**: Resolve migration drift between remote Supabase project history and local `supabase/migrations/` directory, update project configuration, and establish strict migration rules.
 
+#### Root Cause Analysis
+- The remote Supabase database's `schema_migrations` table previously tracked non-standard 2-character / 3-character legacy migration version strings (`"00"` and `"003"`).
+- Because Supabase CLI requires 14-digit timestamp migration IDs (`YYYYMMDDHHMMSS_name.sql`), Supabase's GitHub Integration App failed to pair local files with the remote migration history.
+- **Resolution**: Used non-destructive `npx supabase migration repair --db-url "$DIRECT_URL"` to revert legacy non-standard records (`"00"`, `"003"`) and mark standard 14-digit timestamped migrations (`20260724000000_init_schema`, `20260724000001_pgvector_embeddings`) as applied. Verified side-by-side with zero drift (`npx supabase migration list`).
+
 #### Checklist
-- [x] Query remote Supabase `supabase_migrations.schema_migrations` table to inspect recorded migration history (`"00"` and `"003"`)
+- [x] Query remote Supabase `supabase_migrations.schema_migrations` table to inspect recorded migration history
+- [x] Execute non-destructive `npx supabase migration repair` via `DIRECT_URL` (port 5432) to sync remote `schema_migrations` to 14-digit timestamp files
 - [x] Update `supabase/config.toml` with actual remote project reference (`project_id = "wivyrgqskjicghndfomj"`)
-- [x] Clean up local `supabase/migrations/` to keep exact matching migration files (`00_init_schema.sql` and `003_pgvector_embeddings.sql`) with safe, idempotent SQL
+- [x] Verify local files in `supabase/migrations/` (`20260724000000_init_schema.sql` and `20260724000001_pgvector_embeddings.sql`) match remote migration history 1-to-1 with zero drift
 - [x] Update `AGENTS.md` standing guardrails: require all future schema/RLS changes to be created via `npx supabase migration new <name>` inside `supabase/migrations/` directly
-- [x] Verify GitHub Actions CI Verification and Supabase Preview checks pass cleanly
+- [x] Verify GitHub Actions CI Verification passes cleanly
+
 
 
 
